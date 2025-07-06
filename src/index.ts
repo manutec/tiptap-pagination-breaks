@@ -9,6 +9,10 @@ export interface PaginationOptions {
   pageMargin: number;
   label?: string;
   showPageNumber?: boolean;
+
+  // NUEVAS opciones:
+  lineBreakCSS?: string;
+  continueUntilEnd?: boolean;
 }
 
 declare module '@tiptap/core' {
@@ -29,6 +33,16 @@ export const Pagination = Extension.create<PaginationOptions>({
       pageMargin: 96,
       label: 'Page',
       showPageNumber: true,
+
+      // Valores por defecto para las nuevas opciones:
+      lineBreakCSS: `
+        height: 20px;
+        width: 100%;
+        border-top: 1px dashed #ccc;
+        margin: 10px 0;
+        position: relative;
+      `,
+      continueUntilEnd: false,
     };
   },
 
@@ -79,14 +93,14 @@ export const Pagination = Extension.create<PaginationOptions>({
             let listStartPos = 0;
 
             const options = pluginKey.getState(state);
-            const { pageHeight, pageMargin, showPageNumber, label } = options;
+            const { pageHeight, pageMargin, showPageNumber, label, lineBreakCSS, continueUntilEnd } = options;
             const effectivePageHeight = pageHeight - 2 * pageMargin;
 
             const createPageBreak = (pos: number) => {
               return Decoration.widget(pos, () => {
                 const pageBreak = document.createElement('div');
                 pageBreak.className = 'page-break';
-                pageBreak.style.cssText = `
+                pageBreak.style.cssText = lineBreakCSS || `
                   height: 20px;
                   width: 100%;
                   border-top: 1px dashed #ccc;
@@ -98,9 +112,7 @@ export const Pagination = Extension.create<PaginationOptions>({
                 if (showPageNumber) {
                   const pageIndicator = document.createElement('span');
                   pageIndicator.className = 'page-number';
-                  pageIndicator.textContent = `${
-                    label || 'Page'
-                  } ${pageNumber}`;
+                  pageIndicator.textContent = `${label || 'Page'} ${pageNumber}`;
                   pageIndicator.style.cssText = `
                     position: absolute;
                     right: 0;
@@ -178,6 +190,12 @@ export const Pagination = Extension.create<PaginationOptions>({
                 currentPageHeight += nodeHeight;
               }
             });
+
+            // NUEVO: añadir una página en blanco si continueUntilEnd es true y no se llenó la última página
+            if (continueUntilEnd && currentPageHeight > 0 && currentPageHeight < effectivePageHeight) {
+              // pos = doc.content.size (final del documento)
+              decorations.push(createPageBreak(doc.content.size));
+            }
 
             return DecorationSet.create(doc, decorations);
           },
